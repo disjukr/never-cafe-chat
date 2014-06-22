@@ -7,6 +7,7 @@ phantom = {
     '--ignore-ssl-errors=true'
     '--web-security=false'
     '--load-images=false'
+    '--cookies-file=cookie.txt'
   ]
   port = 5353                           # phantomjs와 통신할 포트
 }

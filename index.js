@@ -57,7 +57,20 @@ async.waterfall([
         });
         phantomjs_node.create.apply(phantomjs_node, args);
     },
-    function (naver, callback) { // 로그인 시도
+    function (naver, callback) { // 이미 로그인 돼있는지 체크
+        naver.evaluate(function () {
+            return !!document.getElementById('minime');
+        }, function (result) {
+            var already = !!result; // 로그인 여부
+            callback(null, already, naver);
+        });
+    },
+    function (already, naver, callback) { // 로그인 시도
+        if (already) {
+            console.log('이미 네이버 로그인이 되어있으므로 바로 채팅방 접속을 시도합니다.');
+            callback(null, naver);
+            return;
+        }
         console.log('네이버 로그인 시도 중...');
         naver.evaluate(function (id, pw) {
             var loginFrame = document.getElementById('loginframe'); // 로그인 영역
@@ -65,8 +78,10 @@ async.waterfall([
             var loginForm = loginDocument.getElementById('frmNIDLogin');
             var idInput = loginDocument.getElementById('id');
             var pwInput = loginDocument.getElementById('pw');
+            var chkLog = loginDocument.getElementById('chk_log');
             idInput.value = id;
             pwInput.value = pw;
+            chkLog.click(); // 로그인 상태 유지
             loginForm.submit();
             return 'success';
         }, function (result) {
