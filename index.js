@@ -49,7 +49,7 @@ async.waterfall([
                     } else {
                         callback([
                             '네이버 페이지 접속에 실패하였습니다.',
-                            '인터넷 연결 상태를 확인해주세요'
+                            '인터넷 연결 상태를 확인해주세요.'
                         ].join('\n'));
                     }
                 });
@@ -80,7 +80,8 @@ async.waterfall([
                         } else if (url == 'https://nid.naver.com/nidlogin.login') {
                             callback([
                                 '네이버 로그인을 실패하였습니다.',
-                                '아이디와 비밀번호를 다시한번 확인해주세요'
+                                '아이디와 비밀번호를 다시한번 확인해주세요',
+                                '혹은 로그인 시도를 너무 자주 하여 자동입력 방지가 작동하는 중일 수 있으니 나중에 다시 시도해주세요.'
                             ].join('\n'));
                         } else {
                             callback([
@@ -100,6 +101,27 @@ async.waterfall([
                 ].join('\n'));
             }
         }, config.naver.id, config.naver.pw);
+    },
+    function (naver, callback) { // 카페 채팅 접속 시도
+        naver.close(); // 로그인에 사용한 페이지는 닫음
+        console.log('채팅방 접속 시도 중...');
+        var naverCafeChat;
+        phantom.createPage(function (page) {
+            naverCafeChat = page;
+            naverCafeChat.set('settings.userAgent', config['user-agent']);
+            naverCafeChat.open(config.naver['chat-room'], function (status) {
+                if (status == 'success') {
+                    console.log('채팅방 접속 성공.');
+                    callback(null, naverCafeChat);
+                } else {
+                    callback([
+                        '카페 채팅방 접속에 실패하였습니다.',
+                        '인터넷 연결 상태를 확인해주세요.',
+                        '인터넷 연결 상태에 문제가 없을 경우, 채팅방 주소가 올바른지 확인해 주세요.'
+                    ].join('\n'));
+                }
+            });
+        });
     }
 ], function (err) {
     if (err) {
