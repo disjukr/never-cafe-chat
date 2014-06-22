@@ -129,3 +129,14 @@ async.waterfall([
         process.exit(3);
     }
 });
+
+function talkToNaverCafeChat(naverCafeChat, message) {
+    naverCafeChat.evaluate(function (message) {
+        var messageInputArea = document.getElementById('msgInputArea');
+        var sendButton = document.getElementsByClassName('_click(ChatRoom|SendMessage)')[0];
+        messageInputArea.value = message;
+        sendButton.click();
+    }, function (result) {
+        // do nothing
+    }, message);
+}
