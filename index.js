@@ -112,6 +112,21 @@ async.waterfall([
             naverCafeChat.open(config.naver['chat-room'], function (status) {
                 if (status == 'success') {
                     console.log('채팅방 접속 성공.');
+                    var fnwrap = function(target) { // workaround: https://github.com/sgentle/phantomjs-node/issues/4
+                        return function() {
+                            return target.apply(this, arguments);
+                        };
+                    }
+                    naverCafeChat.set('onCallback', fnwrap(function (data) {
+                        // TODO
+                        console.log(data);
+                    }));
+                    naverCafeChat.evaluate(function () {
+                        if (typeof window.callPhantom !== 'function')
+                            throw 'error';
+                        // TODO
+                        window.callPhantom('콜백 테스트');
+                    });
                     callback(null, naverCafeChat);
                 } else {
                     callback([
