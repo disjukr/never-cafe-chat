@@ -1,0 +1,21 @@
+{
+  "name": "never-cafe-chat",
+  "version": "0.0.0",
+  "description": "naver cafe chat <-> irc",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "JongChan Choi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/disjukr/never-cafe-chat.git"
+  },
+  "dependencies": {
+    "async": "^0.9.0",
+    "cursive": "0.2.0",
+    "irc": "^0.3.7",
+    "phantom": "^0.6.3"
+  }
+}

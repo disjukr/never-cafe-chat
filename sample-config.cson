@@ -1,0 +1,18 @@
+# 이 파일은 샘플입니다.
+# 이 파일을 복사하여 같은 경로에 config.cson 파일을 만들고 원하는 정보로 수정하시면 됩니다.
+
+user-agent = |Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36
+naver = {
+  id = '네이버 아이디'
+  password = '네이버 비밀번호'
+  cafe = {
+    # TODO
+  }
+}
+irc = {
+  server = 'irc.ozinger.org'            # 봇이 들어갈 irc 서버.
+  port = 6667                           # irc 서버 포트.
+  secure = false                        # ssh 여부
+  nick = 'never'                        # 봇 닉네임
+  channel = '#never_cafe_chat'          # 접속할 irc 채널
+}
