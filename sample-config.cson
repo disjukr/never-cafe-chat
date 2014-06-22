@@ -2,12 +2,18 @@
 # 이 파일을 복사하여 같은 경로에 config.cson 파일을 만들고 원하는 정보로 수정하시면 됩니다.
 
 user-agent = |Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36
+phantom = {
+  args = [                              # phantomjs 커맨드라인 인자
+    '--ignore-ssl-errors=true'
+    '--web-security=false'
+    '--load-images=false'
+  ]
+  port = 5353                           # phantomjs와 통신할 포트
+}
 naver = {
   id = '네이버 아이디'
-  password = '네이버 비밀번호'
-  cafe = {
-    # TODO
-  }
+  pw = '네이버 비밀번호'
+  chat_room = |https://chat.cafe.naver.com/room/00000000/sample:0000000000000   # 채팅방 주소
 }
 irc = {
   server = 'irc.ozinger.org'            # 봇이 들어갈 irc 서버.
