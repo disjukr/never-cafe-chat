@@ -306,7 +306,7 @@ async.waterfall([
                     switch (data.type) {
                     case 'message':
                         talkToNaverCafeChat(naverCafeChat, [
-                            ':: irc ::<', data.nick, '> ', data.message
+                            data.nick, '@irc: ', data.message
                         ].join(''));
                         break;
                     case 'join':
