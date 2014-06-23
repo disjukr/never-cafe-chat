@@ -221,6 +221,90 @@ async.waterfall([
             }, 10);
         });
         callback(null, naverCafeChat);
+    },
+    function (naverCafeChat, callback) { // irc 채널 접속 및 채팅 로깅
+        console.log('irc 채널 접속중...');
+        var ircClient = new irc.Client(config.irc.server, config.irc.nick, {
+            port: config.irc.port,
+            secure: config.irc.secure,
+            autoRejoin: true,
+            autoConnect: true,
+            channels: [config.irc.channel]
+        });
+        function channelEvent(event) {
+            return event + config.irc.channel;
+        }
+        ircClient.addListener('error', function(info) {
+            console.log('irc 에러:', util.inspect(info, {depth: 10}));
+        });
+        ircClient.addListener(channelEvent('join'), function (nick, message) {
+            if (nick == config.irc.nick) {
+                console.log('irc 채널 접속 성공.');
+                console.log('지금부터 irc 채팅이 로깅됩니다.');
+                callback(null, naverCafeChat, ircClient); // 중계 시작
+            }
+            console.log('irc 채팅방에 ' + nick + '님이 들어왔습니다.');
+            ircChannelQueue.push({
+                type: 'join',
+                nick: nick
+            });
+        });
+        ircClient.addListener(channelEvent('part'), function (nick, message) {
+            console.log(nick + '님이 irc 채팅방을 나가셨습니다.');
+            ircChannelQueue.push({
+                type: 'part',
+                nick: nick
+            });
+        });
+        ircClient.addListener(channelEvent('message'), function (nick, text, message) {
+            console.log('irc 채팅:', util.inspect(message, {depth: 10}));
+            ircChannelQueue.push({
+                type: 'message',
+                nick: nick,
+                message: text
+            });
+        });
+    },
+    function (naverCafeChat, ircClient, callback) { // 채팅방간 중계
+        console.log('네이버 카페 채팅 <-> irc 채널간 중계를 시작합니다.');
+        talkToNaverCafeChat(naverCafeChat, ':: irc 채널과 중계를 시작합니다. ::');
+        talkToIRC(ircClient, ':: 네이버 카페 채팅과 중계를 시작합니다. ::');
+        setInterval(function () { // 1초당 100번씩, 쌓인 대화 중계
+            while (cafeChatQueue.length > 0) { // 카페 채팅 큐가 바닥날 때까지
+                (function (data) { // irc 채널로 내용 중계
+                    switch (data.type) {
+                    case 'message':
+                        talkToIRC(ircClient, [
+                            data.name, '(', data.id, '): ', data.message
+                        ].join(''));
+                        break;
+                    default: break; // 필요없는 타입은 무시
+                    }
+                })(cafeChatQueue.shift());
+            }
+            while (ircChannelQueue.length > 0) { // irc 채널 큐가 바닥날 때까지
+                (function (data) { // 카페 채팅으로 내용 중계
+                    switch (data.type) {
+                    case 'message':
+                        talkToNaverCafeChat(naverCafeChat, [
+                            ':: irc ::<', data.nick, '> ', data.message
+                        ].join(''));
+                        break;
+                    case 'join':
+                        talkToNaverCafeChat(naverCafeChat, [
+                            ':: irc 채널에 ', data.nick,'님이 들어왔습니다. ::'
+                        ].join(''));
+                        break;
+                    case 'part':
+                        talkToNaverCafeChat(naverCafeChat, [
+                            ':: irc 채널에서 ', data.nick,'님이 나갔습니다. ::'
+                        ].join(''));
+                        break;
+                    default: break; // 필요없는 타입은 무시
+                    }
+                })(ircChannelQueue.shift());
+            }
+        }, 10);
     }
 ], function (err) {
     if (err) {
@@ -267,4 +351,8 @@ function talkToNaverCafeChat(naverCafeChat, message) {
     }, function (result) {
         // do nothing
     }, message);
+}
+
+function talkToIRC(ircClient, message) {
+    ircClient.say(config.irc.channel, message);
 }
