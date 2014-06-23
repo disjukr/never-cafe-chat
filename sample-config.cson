@@ -1,5 +1,6 @@
 # 이 파일은 샘플입니다.
 # 이 파일을 복사하여 같은 경로에 config.cson 파일을 만들고 원하는 정보로 수정하시면 됩니다.
+# 이 설정파일의 포맷에 대해서는 http://noe.mearie.org/cson/ 이 문서를 참고해주시기 바랍니다.
 
 user-agent = |Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36
 phantom = {
