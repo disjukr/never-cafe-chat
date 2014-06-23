@@ -217,6 +217,11 @@ async.waterfall([
                             })()
                         });
                         break;
+                    case 'attn': // 안내문구
+                        callPhantom({
+                            type: 'attention',
+                            message: lastChild.textContent.trim()
+                        });
                     case undefined:
                         break;
                     default:
