@@ -33,6 +33,9 @@ console.log('설정파일 정보:', util.inspect(config, {depth: 10}));
      * 대화 중계 시작
 */
 var phantom; // phantomjs 객체
+// 아래 두 큐는 중계에 사용됨
+var cafeChatQueue = []; // 네이버 카페 채팅 대화 큐
+var ircChannelQueue = []; // irc 대화 큐
 async.waterfall([
     function (callback) { // phantom 객체 생성 및 네이버 페이지 접속
         var args = config.phantom.args.concat({port: config.phantom.port}, function (ph) {
@@ -127,22 +130,23 @@ async.waterfall([
             naverCafeChat.open(config.naver['chat-room'], function (status) {
                 if (status == 'success') {
                     console.log('채팅방 접속 성공.');
-                    var fnwrap = function(target) { // workaround: https://github.com/sgentle/phantomjs-node/issues/4
-                        return function() {
-                            return target.apply(this, arguments);
-                        };
-                    }
-                    naverCafeChat.set('onCallback', fnwrap(function (data) {
-                        // TODO
-                        console.log(data);
-                    }));
                     naverCafeChat.evaluate(function () {
-                        if (typeof window.callPhantom !== 'function')
-                            throw 'error';
-                        // TODO
-                        window.callPhantom('콜백 테스트');
+                        // 참여자 보기 클릭
+                        var showRoomMemberListViewButton = document.getElementsByClassName('_click(ChatRoom|ShowRoomMemberListView)')[0];
+                        function clickElement(el) { // workaround: http://stackoverflow.com/a/16803781/1711246
+                            var ev = document.createEvent("MouseEvent");
+                            ev.initMouseEvent(
+                                'click', true, true, window, null,
+                                0, 0, 0, 0, false,
+                                false, false, false, 0, null
+                            );
+                            el.dispatchEvent(ev);
+                        };
+                        clickElement(showRoomMemberListViewButton);
                     });
-                    callback(null, naverCafeChat);
+                    setTimeout(function () { // 1초 기다렸다가 채팅방 정보 출력후 로깅 시작
+                        callback(null, naverCafeChat);
+                    }, 1000);
                 } else {
                     callback([
                         '카페 채팅방 접속에 실패하였습니다.',
@@ -152,6 +156,71 @@ async.waterfall([
                 }
             });
         });
+    },
+    function (naverCafeChat, callback) { // 채팅방 정보
+        getRoomInfo(naverCafeChat, function (roomInfo) {
+            console.log('채팅방 정보:', roomInfo);
+            callback(null, naverCafeChat);
+        });
+    },
+    function (naverCafeChat, callback) { // 네이버 카페 채팅 로깅
+        console.log('지금부터 네이버 카페 채팅이 로깅됩니다.');
+        var fnwrap = function(target) { // workaround: https://github.com/sgentle/phantomjs-node/issues/4
+            return function() {
+                return target.apply(this, arguments);
+            };
+        }
+        naverCafeChat.set('onCallback', fnwrap(function (data) {
+            cafeChatQueue.push(data); // 큐에 쌓음
+            console.log('카페 채팅:', data);
+        }));
+        naverCafeChat.evaluate(function () {
+            if (typeof window.callPhantom !== 'function')
+                throw 'error';
+            var chatBoard = document.getElementById('boardBody');
+            var lastChild = chatBoard.lastChild;
+            setInterval(function () { // 초당 100 번씩 새 대화 체크
+                if (lastChild != chatBoard.lastChild) { // 새 대화 발생
+                    lastChild = chatBoard.lastChild; // 갱신
+                    switch (lastChild.className) {
+                    case 'msg': // 다른 사람의 대화
+                        callPhantom({
+                            type: 'message',
+                            id: (function () {
+                                return lastChild.attributes.targetId.value;
+                            })(),
+                            name: (function () {
+                                var name = $$('.name', lastChild);
+                                return (name.length > 0) ? name[0].textContent : '';
+                            })(),
+                            message: (function () {
+                                var message = $$('.blm span', lastChild);
+                                return (message.length > 0) ? message[0].textContent : '';
+                            })()
+                        });
+                        break;
+                    case 'my msg': // 내 대화
+                        callPhantom({
+                            type: 'my_message',
+                            message: (function () {
+                                var message = $$('.blm span', lastChild);
+                                return (message.length > 0) ? message[0].textContent : '';
+                            })()
+                        });
+                        break;
+                    case undefined:
+                        break;
+                    default:
+                        callPhantom({
+                            type: 'unknown',
+                            className: lastChild.className
+                        });
+                        break;
+                    }
+                }
+            }, 10);
+        });
+        callback(null, naverCafeChat);
     }
 ], function (err) {
     if (err) {
@@ -159,6 +228,35 @@ async.waterfall([
         process.exit(3);
     }
 });
+
+function getRoomInfo(naverCafeChat, callback) {
+    naverCafeChat.evaluate(function () {
+        var memberList = $$('#roomMemberListBody li');
+        return {
+            name: (function () {
+                return $$('#roomName')[0].textContent;
+            })(),
+            members: (function () {
+                return $$('#roomMemberListBody li .inr a').map(function (memberInfo) {
+                    var memberInfoClassName = memberInfo.className;
+                    var parsedMemberInfo = memberInfoClassName.match(/.+\((?:.+)\|(?:.+)\|(.+)\|(.+)\|(.*)\).+/);
+                    parsedMemberInfo = Array.apply(null, parsedMemberInfo);
+                    return {
+                        id: parsedMemberInfo[1],
+                        name: parsedMemberInfo[2],
+                        profileImageUrl: parsedMemberInfo[3]
+                    };
+                });
+            })(),
+            adminId: (function () {
+                var adminInfo = $$('#roomMemberListBody li.adm .inr a')[0];
+                var adminInfoClassName = adminInfo.className;
+                var parsedAdminInfo = adminInfoClassName.match(/.+\((?:.+)\|(?:.+)\|(.+)\|(?:.+)\|(?:.*)\).+/);
+                return Array.apply(null, parsedAdminInfo)[1];
+            })()
+        }
+    }, callback);
+}
 
 function talkToNaverCafeChat(naverCafeChat, message) {
     naverCafeChat.evaluate(function (message) {
