@@ -270,6 +270,24 @@ async.waterfall([
                 nick: nick
             });
         });
+        ircClient.addListener('quit', function (nick, reason, channels, message) {
+            if (channels.indexOf(config.irc.channel) < 0) return; // 이 채널에 있던 사람이 아니면 무시
+            console.log(nick + '님이 irc 서버에서 나가셨습니다: ' + reason);
+            ircChannelQueue.push({
+                type: 'quit',
+                nick: nick,
+                reason: reason
+            });
+        });
+        ircClient.addListener('action', function (from, to, text, message) {
+            if (to !== config.irc.channel) return; // 이 채널을 대상으로 한 행동이 아니면 무시
+            console.log('irc 채팅:', util.inspect(message, {depth: 10}));
+            ircChannelQueue.push({
+                type: 'action',
+                nick: from,
+                message: text
+            });
+        });
         ircClient.addListener(channelEvent('message'), function (nick, text, message) {
             console.log('irc 채팅:', util.inspect(message, {depth: 10}));
             ircChannelQueue.push({
@@ -309,6 +327,11 @@ async.waterfall([
                             data.nick, '@irc: ', data.message
                         ].join(''));
                         break;
+                    case 'action':
+                        talkToNaverCafeChat(naverCafeChat, [
+                            '\"', data.nick, ' ', data.message, '\"@irc'
+                        ].join(''));
+                        break;
                     case 'join':
                         talkToNaverCafeChat(naverCafeChat, [
                             ':: irc 채널에 ', data.nick,'님이 들어왔습니다. ::'
@@ -316,7 +339,12 @@ async.waterfall([
                         break;
                     case 'part':
                         talkToNaverCafeChat(naverCafeChat, [
-                            ':: irc 채널에서 ', data.nick,'님이 나갔습니다. ::'
+                            ':: ', data.nick,'님이 irc 채널을 나갔습니다. ::'
+                        ].join(''));
+                        break;
+                    case 'quit':
+                        talkToNaverCafeChat(naverCafeChat, [
+                            ':: ', data.nick,'님이 \"', data.reason, '\"라고 외치며 irc 서버를 나갔습니다. ::'
                         ].join(''));
                         break;
                     default: break; // 필요없는 타입은 무시
