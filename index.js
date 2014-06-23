@@ -184,20 +184,29 @@ async.waterfall([
                     lastChild = chatBoard.lastChild; // 갱신
                     switch (lastChild.className) {
                     case 'msg': // 다른 사람의 대화
-                        callPhantom({
-                            type: 'message',
-                            id: (function () {
-                                return lastChild.attributes.targetId.value;
-                            })(),
-                            name: (function () {
-                                var name = $$('.name', lastChild);
-                                return (name.length > 0) ? name[0].textContent : '';
-                            })(),
-                            message: (function () {
-                                var message = $$('.blm span', lastChild);
-                                return (message.length > 0) ? message[0].textContent : '';
-                            })()
-                        });
+                        (function () {
+                            var id = lastChild.attributes.targetId.value;
+                            var name = $$('.name', lastChild);
+                            name = (name.length > 0) ? name[0].textContent : '';
+                            if ($$('.say.image', lastChild).length > 0) { // 사진 첨부
+                                callPhantom({
+                                    type: 'image',
+                                    id: id,
+                                    name: name,
+                                    imageUrl: $$('.blm span a', lastChild)[0].href
+                                });
+                            } else {
+                                callPhantom({
+                                    type: 'message',
+                                    id: id,
+                                    name: name,
+                                    message: (function () {
+                                        var message = $$('.blm span', lastChild);
+                                        return (message.length > 0) ? message[0].textContent : '';
+                                    })()
+                                });
+                            }
+                        })();
                         break;
                     case 'my msg': // 내 대화
                         callPhantom({
@@ -276,6 +285,11 @@ async.waterfall([
                     case 'message':
                         talkToIRC(ircClient, [
                             data.name, '(', data.id, '): ', data.message
+                        ].join(''));
+                        break;
+                    case 'image':
+                        talkToIRC(ircClient, [
+                            data.name, '(', data.id, ') 사진전송: ', data.imageUrl.split('?')[0]
                         ].join(''));
                         break;
                     default: break; // 필요없는 타입은 무시
