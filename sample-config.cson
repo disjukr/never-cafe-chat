@@ -23,4 +23,5 @@ irc = {
   secure = false                        # ssh 여부
   nick = 'never'                        # 봇 닉네임
   channel = '#never_cafe_chat'          # 접속할 irc 채널
+  optional-relay = false                # 봇이 멘션된 경우에만 카페 채팅으로 중계
 }

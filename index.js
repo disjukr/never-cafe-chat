@@ -301,6 +301,11 @@ async.waterfall([
         console.log('네이버 카페 채팅 <-> irc 채널간 중계를 시작합니다.');
         talkToNaverCafeChat(naverCafeChat, ':: irc 채널과 중계를 시작합니다. ::');
         talkToIRC(ircClient, ':: 네이버 카페 채팅과 중계를 시작합니다. ::');
+        function checkMentioned(message) {
+            var nick = config.irc.nick;
+            var length = nick.length;
+            return message.substr(0, length) === nick && / |,|:/.test(message.charAt(length));
+        }
         setInterval(function () { // 1초당 100번씩, 쌓인 대화 중계
             while (cafeChatQueue.length > 0) { // 카페 채팅 큐가 바닥날 때까지
                 (function (data) { // irc 채널로 내용 중계
@@ -321,6 +326,14 @@ async.waterfall([
             }
             while (ircChannelQueue.length > 0) { // irc 채널 큐가 바닥날 때까지
                 (function (data) { // 카페 채팅으로 내용 중계
+                    if (!!config.irc['optional-relay']) { // optional-relay 옵션이 켜져있으면
+                        if (data.type === 'message' && checkMentioned(data.message)) { // message만 봇이 멘션될 경우 전송
+                            talkToNaverCafeChat(naverCafeChat, [
+                                data.nick, '@irc: ', data.message.substr(config.irc.nick.length)
+                            ].join(''));
+                        }
+                        return; // 다른 타입은 무시
+                    }
                     switch (data.type) {
                     case 'message':
                         talkToNaverCafeChat(naverCafeChat, [
