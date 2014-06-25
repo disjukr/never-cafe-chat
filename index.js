@@ -327,10 +327,13 @@ async.waterfall([
             while (ircChannelQueue.length > 0) { // irc 채널 큐가 바닥날 때까지
                 (function (data) { // 카페 채팅으로 내용 중계
                     if (!!config.irc['optional-relay']) { // optional-relay 옵션이 켜져있으면
-                        if (data.type === 'message' && checkMentioned(data.message)) { // message만 봇이 멘션될 경우 전송
-                            talkToNaverCafeChat(naverCafeChat, [
-                                data.nick, '@irc: ', data.message.substr(config.irc.nick.length)
-                            ].join(''));
+                        if (data.type === 'message' || // message 타입이나
+                            data.type === 'action') { // action 타입은
+                            if (checkMentioned(data.message)) { // 봇이 멘션될 경우 전송하고 나머지는 무시
+                                talkToNaverCafeChat(naverCafeChat, [
+                                    data.nick, '@irc: ', data.message.substr(config.irc.nick.length)
+                                ].join(''));
+                            }
                         }
                         return; // 다른 타입은 무시
                     }
@@ -340,10 +343,36 @@ async.waterfall([
                             data.nick, '@irc: ', data.message
                         ].join(''));
                         break;
-                    case 'action':
-                        talkToNaverCafeChat(naverCafeChat, [
-                            '\"', data.nick, ' ', data.message, '\"@irc'
-                        ].join(''));
+                    case 'action': // 봇 명령어 사용
+                        switch (data.message.trim()) {
+                        case '대화방정보': case '대화방 정보': case '채팅방정보': case '채팅방 정보':
+                            getRoomInfo(naverCafeChat, function (roomInfo) {
+                                talkToIRC(ircClient, '채팅 방 제목: ' + roomInfo.name);
+                                talkToIRC(ircClient, '채팅 방 인원 수: ' + roomInfo.members.length);
+                                var admin;
+                                roomInfo.members.forEach(function (member, index) {
+                                    if (member.id === roomInfo.adminId) {
+                                        admin = roomInfo.members[index];
+                                        roomInfo.members.splice(index, 1);
+                                    }
+                                });
+                                talkToIRC(ircClient, '방장: ' + admin.name + '(' + admin.id + ')');
+                                while (roomInfo.members.length > 0) {
+                                    talkToIRC(
+                                        ircClient,
+                                        roomInfo.members.splice(0, 5).map(function (member) { // 5명씩 잘라서 출력
+                                            return member.name + '(' + member.id + ')';
+                                        }).join(', ')
+                                    );
+                                }
+                            });
+                            break;
+                        default:
+                            talkToNaverCafeChat(naverCafeChat, [
+                                '\"', data.nick, ' ', data.message, '\"@irc'
+                            ].join(''));
+                            break;
+                        }
                         break;
                     case 'join':
                         talkToNaverCafeChat(naverCafeChat, [
